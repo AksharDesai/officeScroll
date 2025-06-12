@@ -17,9 +17,11 @@ const CheckInOutScreen = ({user_id}) => {
   const [errorText, setErrorText] = useState('');
   const [successNotification,setSuccessNotification]=useState(false)
   const [notificationText,setNotificationText]=useState('')
-  const [presentDates,setPresentDates]=useState([])
+  
   const [checkOutID,setCheckOutID]=useState('')
 
+
+  
 
   const handleNotificationHide=()=>{
     setSuccessNotification(false)
@@ -108,12 +110,6 @@ const CheckInOutScreen = ({user_id}) => {
     }
   }
 
-    const fetchAttendanceDates = async()=>{
-    const dates = await getAllPresentDates(user_id)
-    return dates.data
-  }
-
-
 
   useEffect(() => {
     //0 check in remaining
@@ -123,26 +119,18 @@ const CheckInOutScreen = ({user_id}) => {
       setBtnStatus(status.fetchStatus);
     });
 
-    
+   
 
-    fetchAttendanceDates().then(dates=>{
-      setPresentDates(dates)
-     
-      
-    })
-
-    
-    
   }, []);
     
 
   return (
     <>
 <View style={styles.imgContainer}>
-        <Image style={styles.img} source={require('../srcAssets/img2.png')} />
+        <Image style={styles.img} source={require('../srcAssets/img4.png')} />
       </View>
 
-      <Calendar presentDates={presentDates}></Calendar>
+      <Calendar user_id = {user_id}></Calendar>
 
         <View style={styles.buttonCollection}>
         {btnStatus === 0 ? (
@@ -259,12 +247,17 @@ const CheckInOutScreen = ({user_id}) => {
                 />
               </View>
 
+              <View style={{alignSelf:'flex-start',marginTop:-15,marginBottom:19,marginStart:4}}>
+
+                <Text style={{color:'#898888',fontSize:12,fontFamily:'monospace'}}>Characters : {report?report.length:0}</Text>
+              </View>
+
               {/* Submit button with shadow effect */}
               <View style={styles.submitButtonContainer}>
                 <TouchableOpacity
                   style={[
                     styles.submitButton,
-                    !report.trim() && styles.submitButtonDisabled,
+                    !report.trim() &&  styles.submitButtonDisabled || report.length>195 && styles.submitButtonDisabled,
                   ]}
                   onPress={()=>{
                     console.log('clicked');
@@ -272,7 +265,7 @@ const CheckInOutScreen = ({user_id}) => {
                     handleCheckOut()
                     setCheckoutModalVisible(false)
                   }}
-                  disabled={!report.trim()}>
+                  disabled={!report.trim()|| report.length>195}>
                   {isSubmitting ? (
                     <ActivityIndicator color={'#000'} />
                   ) : (
@@ -315,11 +308,12 @@ export default CheckInOutScreen
 
 const styles = StyleSheet.create({
   img: {
-    width: 150,
-    height: 100,
-    marginBottom: -28,
-    zIndex: 100,
-    marginRight: -150,
+    width: 205,
+    height: 200,
+    marginBottom: -52,
+    // zIndex: 100,
+   marginLeft:20,
+  //  backgroundColor:'#000'
   },
   centeredView: {
     flex: 1,

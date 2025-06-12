@@ -363,7 +363,7 @@ export async function checkOutEmployee(time, report, document_id) {
       
     }else{
 
-      return {success:error,error:`Catched An Errro - ${fetchCheckWifi.error}`}
+      return {success:false, error:`Catched An Error - ${fetchCheckWifi.error}`}
 
     }
   
@@ -374,12 +374,28 @@ export async function checkOutEmployee(time, report, document_id) {
   }
 }
 
-export async function getAllPresentDates(user_id) {
+export async function getAllPresentDates(user_id,year,month) {
+  
   try {
+    
+    month+=1
+
+    const monthStartDate = new Date(year,month-1,1).toISOString();
+    const monthEndDate = new Date(year,month,0,23, 59, 59).toISOString();
+
+
+
+    
     const response = await db.listDocuments(
       DATABASE_ID,
       ATTENDANCE_COLLECTION_ID,
-      [Query.equal("employee_id", user_id), Query.select(["check_in"])]
+
+      [
+        Query.equal("employee_id", user_id), 
+        Query.greaterThanEqual("check_in", monthStartDate),
+        Query.lessThanEqual("check_in", monthEndDate),
+        Query.select(["check_in","check_out","report"]),
+      ]
     );
 
     if (!response) {
@@ -387,12 +403,18 @@ export async function getAllPresentDates(user_id) {
     }
 
     if (response.documents.length > 0) {
+      
+      
       const checkIndata = response.documents.map((entry) => {
         return entry.check_in.split("T")[0];
       });
 
-      return { success: true, data: checkIndata };
+      return { success: true, data: checkIndata , row : response.documents };
+    }else{
+      return {success:false,error:'No Month Data Available'}
     }
+
+
   } catch (error) {
     return { success: false, error: "Failed To Get Your Attendance Data" };
   }
