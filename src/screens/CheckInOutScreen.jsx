@@ -4,7 +4,9 @@ import Calendar from '../components/Calendar'
 import AlertModal from '../components/AlertModal'
 import SuccessNotification from '../components/SuccessNotification'
 import { checkInEmployee, checkOutEmployee, decideButton, getAllPresentDates } from '../utils/functions'
+import { MMKVLoader, useMMKVStorage } from "react-native-mmkv-storage";
 
+const storage2 = new MMKVLoader().initialize();
 
 const CheckInOutScreen = ({user_id}) => {
   
@@ -17,7 +19,8 @@ const CheckInOutScreen = ({user_id}) => {
   const [errorText, setErrorText] = useState('');
   const [successNotification,setSuccessNotification]=useState(false)
   const [notificationText,setNotificationText]=useState('')
-  
+  const [workingOnText,setWorkingOnText]=useState('')
+  const [workingOnLS,setWorkingOnLS] = useMMKVStorage("working_on", storage2);
   const [checkOutID,setCheckOutID]=useState('')
 
 
@@ -48,7 +51,7 @@ const CheckInOutScreen = ({user_id}) => {
   async function handleCheckIn() {
     setIsSubmitting(true);
     const checkInTime = new Date().toISOString();
-    const response = await checkInEmployee(checkInTime, user_id);
+    const response = await checkInEmployee(checkInTime, user_id,workingOnText);
 
     if (response.success) {
       // change button status
@@ -60,7 +63,8 @@ const CheckInOutScreen = ({user_id}) => {
       //show success notification
       setSuccessNotification(true)
       setNotificationText('Checked In')
-      
+      setWorkingOnLS(workingOnText)
+
 
       setIsSubmitting(false);
     } else {
@@ -96,6 +100,7 @@ const CheckInOutScreen = ({user_id}) => {
       setSuccessNotification(true)
       setNotificationText('Checked Out')
       setIsSubmitting(false);
+      setWorkingOnLS(null)
     } else {
       console.log('not able to checkOut');
       //change button status
@@ -197,12 +202,54 @@ const CheckInOutScreen = ({user_id}) => {
                 </TouchableOpacity>
               </View>
 
-                <TouchableOpacity style={styles.submitButton} onPress={()=>{
-                  handleCheckIn()
-                  setCheckinModalVisible(false)
-                }}>
-                  <Text style={styles.submitButtonText}>Confirm</Text>
+                   <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="What are you working on today?"
+                  multiline
+                  numberOfLines={6}
+                  placeholderTextColor="#A3A3A3"
+                  selectionColor={'black'}
+                  value={workingOnText}
+                  onChangeText={setWorkingOnText}
+                />
+              </View>
+
+                <View style={{alignSelf:'flex-start',marginTop:-15,marginBottom:19,marginStart:4}}>
+
+                <Text style={{color:'#898888',fontSize:12,fontFamily:'monospace'}}>Characters : {workingOnText?workingOnText.length:0}/150</Text>
+              </View>
+
+             {/* Submit button with shadow effect */}
+              <View style={styles.submitButtonContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.submitButton,
+                    !workingOnText.trim() &&  styles.submitButtonDisabled || workingOnText.length>150 && styles.submitButtonDisabled,
+                  ]}
+                  onPress={()=>{
+                    console.log('clicked');
+                    
+                    handleCheckIn()
+                    setCheckinModalVisible(false) 
+                  }}
+                  disabled={!workingOnText.trim()|| workingOnText.length>150}>
+                  {isSubmitting ? (
+                    <ActivityIndicator color={'#000'} />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.submitButtonText,
+                        !workingOnText.trim() && styles.submitButtonTextDisabled,
+                      ]}>
+                      Confirm
+                    </Text>
+                  )}
                 </TouchableOpacity>
+              </View>
+
+
+          
              
             </View>
           </View>
@@ -211,78 +258,95 @@ const CheckInOutScreen = ({user_id}) => {
 
       {/* checkout modal  */}
       <Modal
-        animationType="fade"
-        transparent={true}
-        visible={checkoutModalVisible}
-        onRequestClose={() => {
-          setCheckoutModalVisible(!checkoutModalVisible);
-        }}>
-        <View style={styles.centeredView}>
-          <View style={styles.modalContainer}>
-            {/* Black shadow container */}
-            <View style={styles.modalShadow} />
+  animationType="fade"
+  transparent={true}
+  visible={checkoutModalVisible}
+  onRequestClose={() => {
+    setCheckoutModalVisible(!checkoutModalVisible);
+  }}>
+  <View style={styles.centeredView}>
+    <View style={styles.modalContainer}>
+      {/* Black shadow container */}
+      <View style={styles.modalShadow} />
+      {/* Main modal content */}
+      <View style={styles.modalView}>
+        {/* Header */}
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Confirm exit Now ?</Text>
+          <TouchableOpacity
+            style={styles.buttonClose}
+            onPress={() => setCheckoutModalVisible(!checkoutModalVisible)}>
+            <Text style={styles.closeButtonText}>✕</Text>
+          </TouchableOpacity>
+        </View>
 
-            {/* Main modal content */}
-            <View style={styles.modalView}>
-              {/* Header */}
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Daily Report</Text>
-                <TouchableOpacity
-                  style={styles.buttonClose}
-                  onPress={() => setCheckoutModalVisible(!checkoutModalVisible)}>
-                  <Text style={styles.closeButtonText}>✕</Text>
-                </TouchableOpacity>
-              </View>
+        {/* Goal Section */}
+        <View style={styles.goalContainer}>
+          <Text style={styles.goalLabel}>
+            Your todays goal:- 
+            <Text style={styles.goalText}>
+              {workingOnLS ? workingOnLS : 'Unable to fetch from server'}
+            </Text>
+          </Text>
+        </View>
 
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="What did you accomplish today..."
-                  multiline
-                  numberOfLines={6}
-                  placeholderTextColor="#A3A3A3"
-                  selectionColor={'black'}
-                  value={report}
-                  onChangeText={setReport}
-                />
-              </View>
-
-              <View style={{alignSelf:'flex-start',marginTop:-15,marginBottom:19,marginStart:4}}>
-
-                <Text style={{color:'#898888',fontSize:12,fontFamily:'monospace'}}>Characters : {report?report.length:0}</Text>
-              </View>
-
-              {/* Submit button with shadow effect */}
-              <View style={styles.submitButtonContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.submitButton,
-                    !report.trim() &&  styles.submitButtonDisabled || report.length>195 && styles.submitButtonDisabled,
-                  ]}
-                  onPress={()=>{
-                    console.log('clicked');
-                    
-                    handleCheckOut()
-                    setCheckoutModalVisible(false)
-                  }}
-                  disabled={!report.trim()|| report.length>195}>
-                  {isSubmitting ? (
-                    <ActivityIndicator color={'#000'} />
-                  ) : (
-                    <Text
-                      style={[
-                        styles.submitButtonText,
-                        !report.trim() && styles.submitButtonTextDisabled,
-                      ]}>
-                      SUBMIT
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
+        {/* Input Section */}
+        <View style={styles.inputSection}>
+          <View style={styles.inputContainer}>
+             <Text style={[styles.goalLabel,{marginStart:3}]}>
+            Report Your Work:- 
+           
+          </Text>
+            <TextInput
+              style={styles.input}
+             
+              multiline
+              numberOfLines={6}
+            
+              selectionColor={'black'}
+              value={report}
+              onChangeText={setReport}
+            />
+          </View>
+          
+          {/* Character Counter */}
+          <View style={styles.characterCountContainer}>
+            <Text style={styles.characterCount}>
+              Characters: {report ? report.length : 0}/195
+            </Text>
           </View>
         </View>
-      </Modal>
+
+        {/* Submit Button */}
+        <View style={styles.submitButtonContainer}>
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              (!report.trim() || report.length > 195) && styles.submitButtonDisabled,
+            ]}
+            onPress={() => {
+              console.log('clicked');
+              handleCheckOut();
+              setCheckoutModalVisible(false);
+            }}
+            disabled={!report.trim() || report.length > 195}>
+            {isSubmitting ? (
+              <ActivityIndicator color={'#000'} />
+            ) : (
+              <Text
+                style={[
+                  styles.submitButtonText,
+                  !report.trim() && styles.submitButtonTextDisabled,
+                ]}>
+                CONFIRM
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  </View>
+</Modal>
 
 
       {/* notifications for successfull action/process complete */}
@@ -311,24 +375,17 @@ const styles = StyleSheet.create({
     width: 205,
     height: 200,
     marginBottom: -52,
-    // zIndex: 100,
-   marginLeft:20,
-  //  backgroundColor:'#000'
   },
-  centeredView: {
+ centeredView: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Dark backdrop like web version
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-
-  // Container for the shadow effect
   modalContainer: {
     position: 'relative',
     margin: 20,
   },
-
-  // Black shadow/offset container
   modalShadow: {
     position: 'absolute',
     top: 8,
@@ -338,35 +395,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     zIndex: 1,
   },
-
   modalView: {
     backgroundColor: '#FFF',
     padding: 24,
-    alignItems: 'center',
     borderWidth: 2,
     borderColor: '#000',
     position: 'relative',
     zIndex: 2,
-    minWidth: 300,
+    minWidth: 320,
+    maxWidth: 400,
   },
-
-  // Header styling to match web version
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginBottom: 24,
+    marginBottom: 20,
   },
-
   modalTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    letterSpacing: 2,
-
-    fontFamily: 'monospace', // Use monospace font
+    fontSize: 18,
+    fontWeight: 900,
+    letterSpacing: 1,
+    fontFamily: 'monospace',
   },
-
   buttonClose: {
     backgroundColor: 'transparent',
     padding: 8,
@@ -374,7 +425,6 @@ const styles = StyleSheet.create({
     top: -40,
     right: -40,
   },
-
   closeButtonText: {
     color: '#FFF',
     fontSize: 10,
@@ -385,61 +435,74 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 100,
   },
-
-  // Input container with shadow effect like web version
+  // Goal Section
+  goalContainer: {
+    width: '100%',
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  goalLabel: {
+    fontWeight: '700',
+    fontFamily: 'monospace',
+    fontSize: 12,
+    color: '#000',
+  
+  },
+  goalText: {
+    color: '#898888',
+    fontWeight: '700',
+  },
+  // Input Section
+  inputSection: {
+    width: '100%',
+    marginBottom: 24,
+  },
   inputContainer: {
     position: 'relative',
     width: '100%',
-    marginBottom: 16,
+    marginBottom: 8,
   },
-
   input: {
-    width: 270,
+    width: 260,
     height: 120,
     borderWidth: 1,
     borderColor: '#CCCCCC',
-    padding: 12,
+    padding: 10,
     color: '#000',
     backgroundColor: '#FFF',
     textAlignVertical: 'top',
-    fontFamily: 'monospace',
+    // fontFamily: 'monospace',
     fontSize: 14,
-    position: 'relative',
-    zIndex: 2,
   },
-
-  // Character counter
+  characterCountContainer: {
+    width: '100%',
+    paddingHorizontal: 4,
+  },
   characterCount: {
-    alignSelf: 'flex-center',
-    marginBottom: 24,
-    fontFamily: 'monospace',
+    color: '#898888',
     fontSize: 12,
-    color: '#666',
+    fontFamily: 'monospace',
+    textAlign: 'left',
   },
-
-  // Submit button with shadow effect
+  // Submit Button
   submitButtonContainer: {
-    position: 'relative',
-    alignSelf: 'center',
+    width: '100%',
+    alignItems: 'center',
   },
-
-
   submitButton: {
     backgroundColor: '#E1FA57',
     borderWidth: 2,
     borderColor: '#000',
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    position: 'relative',
-    zIndex: 2,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    minWidth: 120,
+    alignItems: 'center',
   },
-
   submitButtonDisabled: {
     backgroundColor: '#F5F5F5',
     borderColor: '#CCCCCC',
     borderWidth: 0.5,
   },
-
   submitButtonText: {
     color: '#000',
     fontWeight: 'bold',
@@ -447,10 +510,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 1,
   },
-
   submitButtonTextDisabled: {
     color: '#999',
   },
+
 
   // Keep your existing button styles for main screen
 

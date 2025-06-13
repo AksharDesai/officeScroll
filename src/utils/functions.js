@@ -278,7 +278,7 @@ export async function decideButton(user_id) {
   }
 }
 
-export async function checkInEmployee(checkInTime, user_id) {
+export async function checkInEmployee(checkInTime, user_id, working_on) {
   try {
     const fetchCheckWifi = await isValidWifi();
 
@@ -286,6 +286,7 @@ export async function checkInEmployee(checkInTime, user_id) {
 
       const checkIndata = {
         check_in: checkInTime,
+        working_on:working_on,
         employee: user_id,
         employee_id: user_id,
       };
